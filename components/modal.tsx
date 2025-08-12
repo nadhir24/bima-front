@@ -382,7 +382,7 @@ export default function Modall() {
                     )}
                     <form onSubmit={handleSubmitWrapper} className="space-y-4">
                       <Input
-                        autoFocus
+
                         label="Email"
                         placeholder="Enter your email"
                         variant="bordered"

@@ -169,12 +169,13 @@ const FilterSidebar = memo(
             </div>
             <div className="flex items-center">
               <input
+                id="available-products-checkbox"
                 type="checkbox"
                 checked={filterByQuantity}
                 onChange={onQuantityFilterChange}
                 className="mr-2 w-4 h-4 rounded dark:bg-zinc-700 border-gray-300 dark:border-zinc-600 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-zinc-800"
               />
-              <label className="text-sm">Show only available products</label>
+              <label htmlFor="available-products-checkbox" className="text-sm">Show only available products</label>
             </div>
           </Card>
         </div>

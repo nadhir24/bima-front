@@ -39,7 +39,7 @@
     "@vercel/speed-insights": "^1.2.0",
     "axios": "^1.11.0",
     "class-variance-authority": "^0.7.1",
-    "clsx": "2.1.1",
+    "clsx": "^2.1.1",
     "framer-motion": "11.18.2",
     "intl-messageformat": "10.7.16",
     "jwt-decode": "^4.0.0",
@@ -52,7 +52,8 @@
     "react-dom": "18.3.1",
     "react-toastify": "^11.0.5",
     "recharts": "^3.1.2",
-    "sonner": "^2.0.7"
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
     "@next/eslint-plugin-next": "15.3.4",
@@ -79,6 +80,7 @@
     "prettier": "3.5.3",
     "tailwind-variants": "2.0.1",
     "tailwindcss": "4.1.11",
+    "tw-animate-css": "^1.3.6",
     "typescript": "5.6.3"
   }
 }

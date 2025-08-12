@@ -1,9 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import { Button } from "@/components/button";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Card,
@@ -19,7 +18,7 @@ import {
   Package,
   AlertCircle,
 } from "lucide-react";
-import Tombol from "@/components/button";
+
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
@@ -1176,19 +1175,19 @@ export default function CheckoutPage() {
                 <CardFooter>
                   {checkoutData.items.length === 0 ? (
                     // If cart is empty, only show Lihat Katalog button
-                    (<Tombol
-                      onPress={() => router.push("/katalog")}
+                    (<Button
+                      onClick={() => router.push("/katalog")}
                       className="w-full bg-black hover:bg-gray-800 text-white"
                       size="lg"
                     >Lihat Katalog
-                                          </Tombol>)
+                    </Button>)
                   ) : (
                     // If cart has items, show the Pay button
-                    (<Tombol
-                      onPress={createTransaction}
-                      className="w-full bg-black hover:bg-gray-800 text-white relative z-30 cursor-pointer !pointer-events-auto"
+                    (<Button
+                      onClick={createTransaction}
+                      className="w-full bg-black hover:bg-gray-800 text-white"
                       size="lg"
-                      isDisabled={loading} // Menambahkan prop disabled untuk mencegah pencetan saat loading
+                      disabled={loading}
                     >
                       {loading ? (
                         <>
@@ -1198,7 +1197,7 @@ export default function CheckoutPage() {
                       ) : (
                         "Bayar Sekarang"
                       )}
-                    </Tombol>)
+                    </Button>)
                   )}
                 </CardFooter>
               </Card>

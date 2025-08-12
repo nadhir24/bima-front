@@ -18,7 +18,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/button";
+import { Button } from "@/components/ui/button";
 import { Avatar } from "@heroui/react";
 import { useAuth } from "@/context/AuthContext";
 

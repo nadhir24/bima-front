@@ -9,7 +9,7 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
-import { Button } from "@/components/button";
+import { Button } from "@/components/ui/button";
 import {
   FileText,
   Download,
@@ -17,7 +17,7 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 

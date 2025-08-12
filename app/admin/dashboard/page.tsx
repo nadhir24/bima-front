@@ -4,10 +4,11 @@ import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState, useEffect, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/utils";
 import { Users, ShoppingBag, DollarSign } from "lucide-react";
 import axios from "axios";
+import { toast } from "sonner";
+
 interface DashboardSummary {
   totalSales: number;
   totalUsers: number;
@@ -37,7 +38,6 @@ interface DashboardSummary {
 export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
   const fetchSummary = useCallback(async () => {
     try {
@@ -55,14 +55,10 @@ export default function DashboardPage() {
       }
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 401) {
-        toast({
-          title: "Error",
-          description: "Session expired. Please login again.",
-          variant: "destructive",
-        });
+        toast.error("Session expired. Please login again.");
       }
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -145,6 +141,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>

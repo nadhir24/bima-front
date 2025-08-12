@@ -13,7 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 
-import Button from "@/components/button";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import {
@@ -406,8 +406,8 @@ export default function OrdersPage() {
             </div>
 
             <Button
-              variant="bordered"
-              onPress={handleClearFilters}
+              variant="outline"
+              onClick={handleClearFilters}
               className="h-10"
             >
               Clear Filters
@@ -519,9 +519,9 @@ export default function OrdersPage() {
                           ].includes(order.status) &&
                             order.midtransInvoicePdfUrl && (
                               <Button
-                                variant="bordered"
+                                variant="outline"
                                 size="sm"
-                                onPress={() =>
+                                onClick={() =>
                                   window.open(
                                     order.midtransInvoicePdfUrl,
                                     "_blank"

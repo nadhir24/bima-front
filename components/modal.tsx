@@ -26,7 +26,8 @@ import { Spinner } from "@heroui/spinner";
 import { useAuth } from "@/context/AuthContext";
 import { title } from "@/components/primitives";
 import { Eye, EyeOff } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
+
 
 // Custom hook to detect screen size (simple example) - copied from HoverCartModal
 const useMediaQuery = (query: string) => {
@@ -48,7 +49,7 @@ const useMediaQuery = (query: string) => {
 export default function Modall() {
   const router = useRouter();
   const { user, login, logout, isLoggedIn } = useAuth();
-  const { toast } = useToast();
+  
   const [showPassword, setShowPassword] = useState(false);
   const [isButtonLoading, setIsButtonLoading] = useState(false);
   const [isFormLoading, setIsFormLoading] = useState(false);
@@ -133,11 +134,7 @@ export default function Modall() {
       localStorage.setItem("user", JSON.stringify(userData));
       login(userData);
 
-      toast({
-        // Success toast
-        title: "Login successful!",
-        variant: "default", // Keep success default
-      });
+      toast.success("Login successful!");
 
       // Remember me logic
       if (rememberMe) {
@@ -151,13 +148,7 @@ export default function Modall() {
       // Don't clear email if remembered, but clear password
       setPassword("");
     } catch (error: any) {
-      toast({
-        // Failure toast
-        title: "Login Gagal",
-        // Use the specific error message thrown or a default
-        description: "Email atau password yang anda masukan salah.",
-        variant: "default", // Use destructive variant for errors
-      });
+      toast.error("Login Gagal: Email atau password yang anda masukan salah.");
     } finally {
       setIsFormLoading(false);
     }
@@ -174,9 +165,7 @@ export default function Modall() {
 
   const handleLogout = () => {
     logout();
-    toast({
-      title: "Logged out successfully!",
-    });
+    toast("Logged out successfully!");
     router.push("/");
   };
 
@@ -216,11 +205,7 @@ export default function Modall() {
 
       // Basic frontend check for password match
       if (password !== confirmPassword) {
-        toast({
-          title: "Error",
-          description: "Passwords do not match.",
-          variant: "default",
-        }); // Use default
+        toast.error("Passwords do not match.");
         setIsFormLoading(false);
         return;
       }
@@ -243,19 +228,12 @@ export default function Modall() {
       setPhoneNumber("");
       setPassword("");
       setConfirmPassword("");
-      toast({
-        title: "Registrasi berhasil!",
-        description: "Silakan login.",
-      });
+      toast.success("Registrasi berhasil! Silakan login.");
     } catch (error: any) {
       // This block now only catches actual HTTP errors (4xx, 5xx) or network errors
       const errorMessage =
         error.response?.data?.message || error.message || "Registrasi gagal";
-      toast({
-        title: "Registrasi gagal",
-        description: errorMessage,
-        variant: "default", // Use default for actual errors
-      });
+      toast.error(errorMessage);
     } finally {
       setIsFormLoading(false);
     }

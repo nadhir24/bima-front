@@ -20,7 +20,6 @@ import {
 import { MoreHorizontal, Search, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -30,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { jwtDecode } from "jwt-decode";
+import { toast } from "sonner";
 
 interface User {
   id: number;
@@ -48,13 +48,12 @@ const ROLES = {
   USER: { id: 3, name: "User" },
 } as const;
 
-export default function UsersPage() {
+export default function UsersPage(): JSX.Element {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
-  const { toast } = useToast();
   const router = useRouter();
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
@@ -155,12 +154,7 @@ export default function UsersPage() {
       setTotalPages(paginationData.totalPages);
       setCurrentPage(paginationData.currentPage);
     } catch (error) {
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error ? error.message : "Failed to load users data",
-        variant: "destructive",
-      });
+      toast.error(error instanceof Error ? error.message : "Failed to load users data");
       setUsers([]);
       setTotalPages(1);
       setCurrentPage(1);
@@ -206,6 +200,103 @@ export default function UsersPage() {
       }
     }
   }, []);
+
+  const handleRoleChange = async (userId: number, newRoleId: number) => {
+    const promise = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found");
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/user-role/update`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: userId,
+            newRoleId: newRoleId,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to update role");
+      }
+
+      // Parse response to get new token
+      const responseData = await response.json();
+
+      // Update token in localStorage if it's the current user
+      const isChangingOwnRole = userId === currentUserId;
+      if (isChangingOwnRole && responseData.token) {
+        localStorage.setItem("token", responseData.token);
+
+        // Also update user object if needed
+        const currentUser = localStorage.getItem("user");
+        if (currentUser) {
+          try {
+            const userObj = JSON.parse(currentUser);
+            userObj.roleId = [{ userId: userId, roleId: newRoleId }];
+            localStorage.setItem("user", JSON.stringify(userObj));
+          } catch (e) {
+            // Error handling without console.log
+          }
+        }
+      }
+
+      toast.success(`Role updated to ${newRoleId === 1 ? "Admin" : "User"}`);
+    };
+
+    toast.promise(promise(), {
+      loading: "Updating role...",
+      error: (err) => err.message,
+    });
+  };
+
+  const handleDeleteUser = (user: User) => {
+    const promise = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found");
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/users/delete/${user.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to delete user' }));
+        throw new Error(errorData.message);
+      }
+    };
+
+    toast.error(`Are you sure you want to delete ${user.fullName}?`, {
+      action: {
+        label: "Delete",
+        onClick: () => {
+          toast.promise(promise(), {
+            loading: `Deleting ${user.fullName}...`,
+            success: (data) => {
+              fetchUsers(currentPage, searchQuery);
+              return "User deleted successfully!";
+            },
+            error: (err) => err.message,
+          });
+        },
+      },
+      cancel: {
+        label: "Cancel",
+        onClick: () => {},
+      },
+    });
+  };
 
   return (
     <div className="container mx-auto py-10">
@@ -295,15 +386,26 @@ export default function UsersPage() {
                   </TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                        user.roleName === "admin"
-                          ? "bg-purple-100 text-purple-700"
-                          : "bg-gray-100 text-gray-700"
-                      }`}
+                    <Select
+                      value={String(user.userRoles[0]?.roleId || "")}
+                      onValueChange={(value) =>
+                        handleRoleChange(user.id, parseInt(value))
+                      }
                     >
-                      {user.roleName === "admin" ? "Admin" : "User"}
-                    </span>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Select role">
+                          {user.roleName === "admin" ? "Admin" : "User"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={String(ROLES.USER.id)}>
+                          User
+                        </SelectItem>
+                        <SelectItem value={String(ROLES.ADMIN.id)}>
+                          Admin
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell>
                     {new Date(user.createdAt).toLocaleDateString("id-ID", {
@@ -326,110 +428,9 @@ export default function UsersPage() {
                         >
                           <Select
                             value={String(user.userRoles[0]?.roleId || "")}
-                            onValueChange={async (value) => {
-                              try {
-                                const token = localStorage.getItem("token");
-                                if (!token) {
-                                  toast({
-                                    title: "Error",
-                                    description:
-                                      "Authentication token not found",
-                                    variant: "destructive",
-                                  });
-                                  return;
-                                }
-
-                                const newRoleId = parseInt(value);
-                                const isChangingOwnRole =
-                                  user.id === currentUserId;
-                                const isChangingFromAdminToUser =
-                                  isChangingOwnRole &&
-                                  user.userRoles[0]?.roleId === 1 &&
-                                  newRoleId !== 1;
-
-                                const response = await fetch(
-                                  `${process.env.NEXT_PUBLIC_API_URL}/user-role/update`,
-                                  {
-                                    method: "PUT",
-                                    headers: {
-                                      "Content-Type": "application/json",
-                                      Authorization: `Bearer ${token}`,
-                                    },
-                                    body: JSON.stringify({
-                                      userId: user.id,
-                                      newRoleId,
-                                    }),
-                                  }
-                                );
-
-                                if (!response.ok) {
-                                  throw new Error("Failed to update role");
-                                }
-
-                                // Parse response to get new token
-                                const responseData = await response.json();
-
-                                // Update token in localStorage if it's the current user
-                                if (isChangingOwnRole && responseData.token) {
-                                  localStorage.setItem(
-                                    "token",
-                                    responseData.token
-                                  );
-
-                                  // Also update user object if needed
-                                  const currentUser =
-                                    localStorage.getItem("user");
-                                  if (currentUser) {
-                                    try {
-                                      const userObj = JSON.parse(currentUser);
-                                      userObj.roleId = [
-                                        { userId: user.id, roleId: newRoleId },
-                                      ];
-                                      localStorage.setItem(
-                                        "user",
-                                        JSON.stringify(userObj)
-                                      );
-                                    } catch (e) {
-                                      // Error handling without console.log
-                                    }
-                                  }
-                                }
-
-                                toast({
-                                  title: "Success",
-                                  description: `Role updated to ${
-                                    newRoleId === 1
-                                      ? "Admin"
-                                      : newRoleId === 3
-                                        ? "User"
-                                        : "Guest"
-                                  }`,
-                                });
-
-                                // If user changed their own role from admin to regular user, redirect to homepage
-                                if (isChangingFromAdminToUser) {
-                                  toast({
-                                    title: "Role Changed",
-                                    description:
-                                      "You've changed your role from Admin to User. Redirecting to homepage...",
-                                  });
-
-                                  // Short delay before redirect
-                                  setTimeout(() => {
-                                    window.location.href = "/";
-                                  }, 1500);
-                                  return;
-                                }
-
-                                fetchUsers(currentPage, searchQuery);
-                              } catch (error) {
-                                toast({
-                                  title: "Error",
-                                  description: "Failed to update role",
-                                  variant: "destructive",
-                                });
-                              }
-                            }}
+                            onValueChange={(value) =>
+                              handleRoleChange(user.id, parseInt(value))
+                            }
                           >
                             <SelectTrigger className="w-[180px]">
                               <SelectValue placeholder="Select role">
@@ -447,76 +448,7 @@ export default function UsersPage() {
                           </Select>
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => {
-                            toast({
-                              title: "Delete User",
-                              description:
-                                "Are you sure you want to delete this user?",
-                              action: (
-                                <Button
-                                  variant="destructive"
-                                  onClick={async () => {
-                                    try {
-                                      const token =
-                                        localStorage.getItem("token");
-                                      if (!token) {
-                                        toast({
-                                          title: "Error",
-                                          description:
-                                            "Authentication token not found",
-                                          variant: "destructive",
-                                        });
-                                        return;
-                                      }
-
-                                      const response = await fetch(
-                                        `${process.env.NEXT_PUBLIC_API_URL}/users/delete/${user.id}`,
-                                        {
-                                          method: "DELETE",
-                                          headers: {
-                                            Authorization: `Bearer ${token}`,
-                                            "Content-Type": "application/json",
-                                          },
-                                        }
-                                      );
-
-                                      if (!response.ok) {
-                                        const errorData = await response
-                                          .json()
-                                          .catch(() => null);
-                                        throw new Error(
-                                          errorData?.message ||
-                                            "Failed to delete user"
-                                        );
-                                      }
-
-                                      toast({
-                                        title: "Success",
-                                        description:
-                                          "User deleted successfully",
-                                        variant: "default",
-                                      });
-
-                                      setTimeout(() => {
-                                        fetchUsers(currentPage, searchQuery);
-                                      }, 500);
-                                    } catch (error) {
-                                      toast({
-                                        title: "Error",
-                                        description:
-                                          error instanceof Error
-                                            ? error.message
-                                            : "Failed to delete user",
-                                        variant: "destructive",
-                                      });
-                                    }
-                                  }}
-                                >
-                                  Delete
-                                </Button>
-                              ),
-                            });
-                          }}
+                          onClick={() => handleDeleteUser(user)}
                           className="text-red-600"
                         >
                           Delete

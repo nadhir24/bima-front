@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/button";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
 import { toast } from "sonner";

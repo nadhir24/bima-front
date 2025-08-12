@@ -2,7 +2,6 @@
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState, useContext } from "react";
 import axios from "axios";
-import { useToast } from "@/components/ui/use-toast";
 import {
   Modal,
   ModalContent,
@@ -27,6 +26,7 @@ import { Spinner } from "@heroui/spinner";
 import { useAuth } from "@/context/AuthContext";
 import { title } from "@/components/primitives";
 import { Eye, EyeOff } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 // Custom hook to detect screen size (simple example) - copied from HoverCartModal
 const useMediaQuery = (query: string) => {

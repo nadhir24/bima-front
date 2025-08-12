@@ -11,10 +11,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/components/ui/use-toast";
 import { formatCurrency } from "@/lib/utils";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
+
+import Button from "@/components/button";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -106,7 +106,7 @@ export default function OrdersPage() {
   );
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
-  const { toast } = useToast();
+  // Sonner toast is imported from "sonner"
 
   // Debounce timeout reference
   const debounceTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -172,13 +172,11 @@ export default function OrdersPage() {
           setCurrentPage(1);
         }
       } catch (error) {
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description:
             error instanceof Error
               ? error.message
               : "Failed to load orders data",
-          variant: "destructive",
         });
         setOrders([]);
         setTotalPages(1);
@@ -187,7 +185,7 @@ export default function OrdersPage() {
       }
       // Include dependencies for useCallback
     },
-    [currentPage, searchQuery, statusFilter, startDate, endDate, toast]
+    [currentPage, searchQuery, statusFilter, startDate, endDate]
   );
 
   // Effect for fetching orders when page changes
@@ -244,11 +242,7 @@ export default function OrdersPage() {
   ) => {
     const orderToUpdate = orders.find((o) => o.id === orderId);
     if (!orderToUpdate) {
-      toast({
-        title: "Error",
-        description: "Order not found locally.",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Order not found locally." });
       return;
     }
     setUpdateLoading(orderToUpdate.id);
@@ -283,18 +277,13 @@ export default function OrdersPage() {
         )
       );
 
-      toast({
-        title: "Success",
-        description: `Order status updated to ${newStatus}`,
-      });
+      toast.success("Success", { description: `Order status updated to ${newStatus}` });
     } catch (error) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description:
           error instanceof Error
             ? error.message
             : "Failed to update order status",
-        variant: "destructive",
       });
     } finally {
       setUpdateLoading(null);
@@ -417,8 +406,8 @@ export default function OrdersPage() {
             </div>
 
             <Button
-              variant="outline"
-              onClick={handleClearFilters}
+              variant="bordered"
+              onPress={handleClearFilters}
               className="h-10"
             >
               Clear Filters
@@ -530,9 +519,9 @@ export default function OrdersPage() {
                           ].includes(order.status) &&
                             order.midtransInvoicePdfUrl && (
                               <Button
-                                variant="outline"
+                                variant="bordered"
                                 size="sm"
-                                onClick={() =>
+                                onPress={() =>
                                   window.open(
                                     order.midtransInvoicePdfUrl,
                                     "_blank"

@@ -15,7 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/button";
 import { MoreHorizontal, PencilIcon, Trash2Icon, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";

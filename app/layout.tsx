@@ -18,7 +18,7 @@ import { Divider } from "@heroui/react";
 import Image from "next/image";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "sonner";
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import ClientInit from './components/client-init';
 
@@ -191,7 +191,7 @@ export default function RootLayout({
                     </div>
                   </div>
                 </footer>
-                <Toaster />
+                <Toaster richColors position="top-right" />
                 <SpeedInsights />
               </div>
             </CartProvider>

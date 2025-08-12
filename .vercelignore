@@ -1,0 +1,14 @@
+# Build artifacts
+.next
+out
+node_modules
+
+# Development files
+.git
+.github
+.vscode
+.idea
+*.log
+
+# Cache
+.vercel 

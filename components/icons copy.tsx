@@ -1,12 +1,5 @@
 import * as React from "react";
-
-interface IconSvgProps extends React.SVGProps<SVGSVGElement> {
-  size?: number | string;
-  width?: number | string;
-  height?: number | string;
-  className?: string;
-  [key: string]: any; // Allow any other props
-}
+import { IconSvgProps } from "@/types";
 
 export const Logo: React.FC<IconSvgProps> = ({
   size = 36,

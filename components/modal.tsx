@@ -430,18 +430,17 @@ export default function Modall() {
                           Remember me
                         </Checkbox>
 
-                        <Link
-                          color="primary"
-                          onPress={handleOpenRegister}
-                          size="sm"
+                        <button
+                          type="button"
+                          onClick={handleOpenRegister}
+                          disabled={isFormLoading}
                           className={
-                            isFormLoading
-                              ? "pointer-events-none text-default-400"
-                              : ""
+                            "text-sm text-primary hover:underline " +
+                            (isFormLoading ? "text-default-400 cursor-not-allowed" : "cursor-pointer")
                           }
                         >
                           Don&apos;t have an account? Sign up
-                        </Link>
+                        </button>
                       </div>
 
                       {/* Add a hidden submit button to enable Enter key submission */}

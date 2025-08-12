@@ -10,13 +10,13 @@ export const title = tv({
       cyan: "from-[#00b7fa] to-[#01cfea]",
       green: "from-[#6FEE8D] to-[#17c964]",
       pink: "from-[#FF72E1] to-[#F54C7A]",
-      red: "from-[#FF1A1A] to-[#FF4D4D]", // 🔹 tambahkan ini
       foreground: "dark:from-[#FFFFFF] dark:to-[#4B4B4B]",
+      black: "text-black", // New solid black color option
+      red: "from-[#FF0000] to-[#FF7F7F]", // New red gradient
     },
-    
     size: {
       sm: "text-3xl lg:text-4xl",
-      md: "text-[2.3rem] lg:text-5xl",
+      md: "text-[2.3rem] lg:text-5xl leading-9",
       lg: "text-4xl lg:text-6xl",
     },
     fullWidth: {

@@ -104,7 +104,6 @@ export default function Navy() {
         <div className="hidden sm:flex items-center">
           <ul className="flex gap-4 justify-start ml-2">
             {siteConfig.navItems
-              .filter((item) => item.href)
               .filter((item) => {
                 // Filter out Invoice menu untuk user yang sudah login
                 if (item.href === "/invoice") {
@@ -150,7 +149,6 @@ export default function Navy() {
       <NavbarMenu className="pt-2 pb-6">
         <div className="mx-4 mt-2 flex flex-col gap-4">
           {siteConfig.navMenuItems
-            .filter((item) => item.href)
             .filter((item) => {
               // Filter juga menu mobile dengan cara yang sama
               if (item.href === "/invoice") {

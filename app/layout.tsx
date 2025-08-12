@@ -57,10 +57,10 @@ export default function RootLayout({
           fontSans.variable
         )}
       >
-        <ClientInit />
-        <Providers themeProps={{ attribute: "class", defaultTheme: "light" }}>
+        <Providers themeProps={{ attribute: "class", defaultTheme: "dark" }}>
           <AuthProvider>
             <CartProvider>
+              <ClientInit />
               <div className="relative flex flex-col min-h-screen bg-gradient-custom">
                 <Navy />
                 <main className="container mx-auto pt-16 px-6 flex-grow">
@@ -191,9 +191,9 @@ export default function RootLayout({
                     </div>
                   </div>
                 </footer>
+                <Toaster />
+                <SpeedInsights />
               </div>
-              <Toaster />
-              <SpeedInsights />
             </CartProvider>
           </AuthProvider>
         </Providers>

@@ -158,7 +158,6 @@ export default function Home() {
 
         {/* Stats Section */}
         <section className="mb-16">
-          <div className="bg-pink-500 w-20 h-20">test</div>
           <h2 className="text-3xl font-bold text-center mb-12 text-purple-900 font-serif">
             Rano Cake dalam Angka
           </h2>

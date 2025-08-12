@@ -1,4 +1,4 @@
-import { Card, CardBody } from "@heroui/card";
+import { Card, CardBody } from "@heroui/react";
 import { Star } from "lucide-react";
 import Image from "next/image";
 import { motion } from "framer-motion";

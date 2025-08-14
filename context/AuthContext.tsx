@@ -110,31 +110,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData);
     setIsLoggedIn(true);
 
-    // 3. Sync guest cart to user cart
+    // 3. Sync guest cart to user cart (only if JUST_REGISTERED)
     const guestCartItems = JSON.parse(localStorage.getItem("cart_items") || "[]");
     const guestId = localStorage.getItem("guestId"); // Ambil guestId dari localStorage
+    const justRegistered = localStorage.getItem("JUST_REGISTERED") === "1";
 
-    // Always sync/clear if there is a guestId, even when cart_items is empty
     if (guestId) {
-      console.log("SYNC attempt", { guestId, items: guestCartItems.length, hasToken: !!userData.token });
+      console.log("LOGIN post-action", { guestId, items: guestCartItems.length, justRegistered, hasToken: !!userData.token });
       try {
-        await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL}/cart/sync`,
-          {
-            cart: guestCartItems, // Kirim item keranjang
-            guestId: guestId,      // Kirim guestId
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${userData.token}`,
+        if (justRegistered) {
+          // Merge only for newly registered users
+          await axios.post(
+            `${process.env.NEXT_PUBLIC_API_URL}/cart/sync`,
+            {
+              cart: guestCartItems,
+              guestId: guestId,
+              confirmMerge: true,
             },
-            withCredentials: true, // Diperlukan untuk session
-          }
-        );
+            {
+              headers: { Authorization: `Bearer ${userData.token}` },
+              withCredentials: true,
+            }
+          );
+        } else {
+          // Not newly registered: do NOT merge. Clear guest cart to avoid leaking items.
+          await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/cart/clear-guest-cart`, {
+            withCredentials: true,
+          });
+        }
       } catch (error) {
-        console.error("Cart sync failed:", error);
-        toast.error("Cart sync failed");
-        // Handle sync failure
+        console.error("Cart sync/clear after login failed:", error);
+        toast.error("Cart post-login action failed");
       }
     }
 
@@ -147,6 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       "cart_count",
       "cart_total",
       "cart_last_fetch_time",
+      "JUST_REGISTERED",
     ];
     keysToRemove.forEach((key) => localStorage.removeItem(key));
 

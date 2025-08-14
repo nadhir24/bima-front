@@ -131,7 +131,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             withCredentials: true, // Diperlukan untuk session
           }
         );
-        toast.success("Cart synced & guest cart cleared");
       } catch (error) {
         console.error("Cart sync failed:", error);
         toast.error("Cart sync failed");
@@ -187,7 +186,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/cart/guest-session`, {
           withCredentials: true,
         });
-        toast.success("Guest session initialized");
       } catch (e) {
         // ignore
       }

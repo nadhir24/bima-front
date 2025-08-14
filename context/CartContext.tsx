@@ -161,7 +161,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setCartCount(countData);
       setCartTotal(totalDataNumber);
       console.log("Cart loaded", { count: countData, total: totalDataNumber });
-      try { toast.success(`Cart loaded (${countData})`); } catch {}
     } catch (error) {
       // Try to restore from localStorage
       try {
@@ -239,7 +238,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
           setCartItems([]);
           setCartCount(0);
           setCartTotal(0);
-          try { toast.success("Guest session ready (cart cleared)"); } catch {}
           await fetchCartImpl();
         } catch (err) {
           // Silent fail

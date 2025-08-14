@@ -10,6 +10,10 @@ import {
 } from "react";
 
 import { jwtDecode } from "jwt-decode";
+import axios from "axios";
+import { toast } from "sonner";
+// Ensure all requests include cookies (session) by default
+axios.defaults.withCredentials = true;
 
 interface User {
   id: number;
@@ -92,38 +96,72 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const login = (userData: User) => {
-    // Ensure the token exists
+  const login = async (userData: User) => {
     if (!userData.token) {
-      // Silent fail
-    } else {
-      localStorage.setItem("token", userData.token);
-
-      // Verify token was saved
-      const savedToken = localStorage.getItem("token");
-      if (!savedToken) {
-        // Silent fail
-      }
+      // Handle missing token case
+      return;
     }
 
-    // Update state
+    // 1. Store token and user data
+    localStorage.setItem("token", userData.token);
+    localStorage.setItem("user", JSON.stringify(userData));
+
+    // 2. Update auth state
     setUser(userData);
     setIsLoggedIn(true);
 
-    // Save user data
-    localStorage.setItem("user", JSON.stringify(userData));
+    // 3. Sync guest cart to user cart
+    const guestCartItems = JSON.parse(localStorage.getItem("cart_items") || "[]");
+    const guestId = localStorage.getItem("guestId"); // Ambil guestId dari localStorage
 
-    // Clean up guest ID and invoice data
-    localStorage.removeItem("guestId");
-    localStorage.removeItem("guestInvoiceId");
-    localStorage.removeItem("invoiceData");
+    // Always sync/clear if there is a guestId, even when cart_items is empty
+    if (guestId) {
+      console.log("SYNC attempt", { guestId, items: guestCartItems.length, hasToken: !!userData.token });
+      try {
+        await axios.post(
+          `${process.env.NEXT_PUBLIC_API_URL}/cart/sync`,
+          {
+            cart: guestCartItems, // Kirim item keranjang
+            guestId: guestId,      // Kirim guestId
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${userData.token}`,
+            },
+            withCredentials: true, // Diperlukan untuk session
+          }
+        );
+        toast.success("Cart synced & guest cart cleared");
+      } catch (error) {
+        console.error("Cart sync failed:", error);
+        toast.error("Cart sync failed");
+        // Handle sync failure
+      }
+    }
+
+    // 4. Clean up all guest-related and old cart data from localStorage
+    const keysToRemove = [
+      "guestId",
+      "guestInvoiceId",
+      "invoiceData",
+      "cart_items",
+      "cart_count",
+      "cart_total",
+      "cart_last_fetch_time",
+    ];
+    keysToRemove.forEach((key) => localStorage.removeItem(key));
+
+    // 5. Dispatch event to force a cart refresh from the backend
+    window.dispatchEvent(new CustomEvent("FORCE_CART_REFRESH"));
   };
 
   const logout = useCallback(async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
+      // 1. Panggil endpoint logout di backend untuk menghancurkan session
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`);
 
-      // Daftar lengkap semua key yang perlu dihapus dari localStorage
+      // 2. Hapus semua data dari localStorage
       const keysToRemove = [
         "token",
         "user",
@@ -135,40 +173,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         "cart_total",
         "cart_last_fetch_time",
       ];
+      keysToRemove.forEach((key) => localStorage.removeItem(key));
 
-      // Hapus satu per satu untuk memastikan semuanya terhapus
-      keysToRemove.forEach((key) => {
-        try {
-          localStorage.removeItem(key);
-        } catch (e) {
-          // Silent fail
-        }
-      });
-
-      // Double-check bahwa token dan user benar-benar sudah dihapus
-      if (localStorage.getItem("token") || localStorage.getItem("user")) {
-        // Paksa hapus dengan cara alternatif
-        window.localStorage.removeItem("token");
-        window.localStorage.removeItem("user");
-      }
-
-      // Reset state aplikasi
+      // 3. Reset state aplikasi
       setUser(null);
       setIsLoggedIn(false);
 
-      // Tambahkan delay kecil untuk memastikan localStorage benar-benar clear
-      // sebelum event dipancarkan
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      // 4. Dispatch event untuk mereset cart di CartContext
+      window.dispatchEvent(new CustomEvent("FORCE_CART_RESET"));
 
-      // Trigger pembuatan guest session baru
-      window.dispatchEvent(new Event("create_guest_session"));
+      // 5. Inisialisasi sesi guest baru agar mendapatkan guestId baru sebelum redirect
+      try {
+        await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/cart/guest-session`, {
+          withCredentials: true,
+        });
+        toast.success("Guest session initialized");
+      } catch (e) {
+        // ignore
+      }
 
-      // Gunakan window.location.href alih-alih router.push
-      window.location.href = "/";
-
-      return true;
+      // 6. Redirect ke halaman utama untuk memulai sesi guest baru
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 50);
     } catch (error) {
-      return false;
+      console.error("Logout failed:", error);
+      // Jika logout backend gagal, tetap bersihkan sisi klien sebagai fallback
+      localStorage.clear(); // Clear all local storage as a fallback
+      setUser(null);
+      setIsLoggedIn(false);
+      window.dispatchEvent(new CustomEvent("FORCE_CART_RESET"));
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 50);
     } finally {
       setIsLoading(false);
     }

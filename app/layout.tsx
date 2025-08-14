@@ -191,7 +191,7 @@ export default function RootLayout({
                     </div>
                   </div>
                 </footer>
-                <Toaster richColors position="top-right" />
+                <Toaster richColors position="top-center" />
                 <SpeedInsights />
               </div>
             </CartProvider>

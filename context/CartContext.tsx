@@ -100,22 +100,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Get current identifier as a memoized value
   const currentIdentifier = useMemo(() => {
-    return user?.id
-      ? `userId=${user.id}`
-      : guestId
-        ? `guestId=${guestId}`
-        : null;
+    // For guests, do not send any identifier; server will use session cookie
+    return user?.id ? `userId=${user.id}` : '';
   }, [user?.id, guestId]);
 
   // Fetch cart implementation
   const fetchCartImpl = useCallback(async () => {
-    if (!currentIdentifier) {
-      setCartItems([]);
-      setCartCount(0);
-      setCartTotal(0);
-      setIsLoadingCart(false);
-      return;
-    }
+    // Always attempt to fetch. If no userId, backend will resolve guest via session.
 
     // Throttle API calls
     const lastFetchTime = localStorage.getItem("cart_last_fetch_time");
@@ -169,6 +160,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setCartItems(formattedItems);
       setCartCount(countData);
       setCartTotal(totalDataNumber);
+      console.log("Cart loaded", { count: countData, total: totalDataNumber });
+      try { toast.success(`Cart loaded (${countData})`); } catch {}
     } catch (error) {
       // Try to restore from localStorage
       try {
@@ -214,88 +207,49 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const storedGuestId = localStorage.getItem("guestId");
 
-    // Handle user login case
+    // Logged-in: AuthContext handles sync; just clear any guest marker and refresh
     if (isLoggedIn) {
-      if (storedGuestId) {
-        // Auto-sync cart if user logs in and has a previous guest session
-        axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL}/cart/sync`,
-          { userId: user?.id, guestId: storedGuestId }
-        )
-        .then(() => {
-          localStorage.removeItem("guestId");
-          setGuestId(null);
-          fetchCartImpl(); // Refresh cart after sync
-          toast.success("Cart synced successfully");
-        })
-        .catch(err => {
-          console.error("Failed to sync cart", err);
-        });
-      }
+      if (storedGuestId) localStorage.removeItem("guestId");
       setGuestId(null);
-    }
-    // Handle guest user case
-    else if (storedGuestId) {
-      setGuestId(storedGuestId);
-      
-      // Otomatis bersihkan keranjang jika browser baru dibuka
-      // Ini memastikan tidak ada item dari sesi lain yang terbawa
-      const isSessionRestored = localStorage.getItem("session_restored");
-      if (!isSessionRestored) {
-        // Tandai bahwa sesi telah dibersihkan
-        localStorage.setItem("session_restored", "true");
-        
-        // Bersihkan di server
-        axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/cart/clear-guest-cart?guestId=${storedGuestId}`)
-          .then(() => {
-            // Bersihkan di lokal
-            localStorage.setItem("cart_items", JSON.stringify([]));
-            localStorage.setItem("cart_count", "0");
-            localStorage.setItem("cart_total", "0");
-            setCartItems([]);
-            setCartCount(0);
-            setCartTotal(0);
-          })
-          .catch(err => {
-            console.error("Failed to clear guest cart:", err);
-          });
-      }
-    }
-    // Create new guest session
-    else {
-      const createGuestSession = async () => {
+      fetchCartImpl();
+    } else {
+      // Guest flow: always initialize/refresh server-side guest session
+      const initGuest = async () => {
         try {
           const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_API_URL}/cart/guest-session`
+            `${process.env.NEXT_PUBLIC_API_URL}/cart/guest-session`,
+            { withCredentials: true }
           );
-          if (response.data.guestId) {
-            // Clear cart data in localStorage when creating a new guest session
-            localStorage.setItem("cart_items", JSON.stringify([]));
-            localStorage.setItem("cart_count", "0");
-            localStorage.setItem("cart_total", "0");
-            localStorage.setItem("session_restored", "true"); // Tandai bahwa ini adalah sesi baru
-            
-            // Set the new guest ID
-            localStorage.setItem("guestId", response.data.guestId);
-            setGuestId(response.data.guestId);
-            
-            // Update state to show empty cart
-            setCartItems([]);
-            setCartCount(0);
-            setCartTotal(0);
-            
-            window.dispatchEvent(new Event("guestIdChange"));
+          const newGuestId = response.data?.guestId;
+
+          // Hard reset local cache
+          localStorage.setItem("cart_items", JSON.stringify([]));
+          localStorage.setItem("cart_count", "0");
+          localStorage.setItem("cart_total", "0");
+
+          if (newGuestId) {
+            localStorage.setItem("guestId", newGuestId);
+            setGuestId(newGuestId);
+          } else {
+            localStorage.removeItem("guestId");
+            setGuestId(null);
           }
+
+          // Reset state and fetch fresh from server
+          setCartItems([]);
+          setCartCount(0);
+          setCartTotal(0);
+          try { toast.success("Guest session ready (cart cleared)"); } catch {}
+          await fetchCartImpl();
         } catch (err) {
           // Silent fail
         }
       };
-
-      createGuestSession();
+      initGuest();
     }
 
     setHasInitialized(true);
-  }, [isLoggedIn, user?.id, fetchCartImpl]); // Added user?.id and fetchCartImpl to dependencies
+  }, [isLoggedIn, user?.id, fetchCartImpl]);
 
   // Separate effect to listen for create_guest_session events
   useEffect(() => {
@@ -364,16 +318,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Add to cart function
   const addToCart = useCallback(
     async (catalogId: number, sizeId: number, quantity: number) => {
-      const identifier = user?.id
-        ? { userId: user.id }
-        : guestId
-          ? { guestId }
-          : null;
-      if (!identifier) {
-        toast.error("Sesi tidak valid. Silakan refresh.");
-        // Return a rejected promise for consistency
-        return Promise.reject(new Error("No identifier"));
-      }
+      const identifier = user?.id ? { userId: user.id } : {};
 
       const payload = { ...identifier, catalogId, sizeId, quantity };
       try {
@@ -437,10 +382,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         payload.userId = user.id;
       }
 
-      // Construct URL with guestId query parameter if applicable
-      const identifierParams =
-        !user?.id && guestId ? `?guestId=${guestId}` : "";
-      const url = `${process.env.NEXT_PUBLIC_API_URL}/cart/${cartId}${identifierParams}`;
+      // Do not send guestId; server derives from session. userId in body is enough for logged-in users
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/cart/${cartId}`;
 
       try {
         // Use the constructed URL
@@ -479,20 +422,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Remove from cart function
   const removeFromCart = useCallback(
     async (cartId: number) => {
-      const identifierParams = user?.id
-        ? `userId=${user.id}`
-        : guestId
-          ? `guestId=${guestId}`
-          : null;
-      if (!identifierParams) {
-        toast.error("Sesi tidak valid. Silakan refresh.");
-        return Promise.reject(new Error("No identifier"));
-      }
+      // No guestId query param; for users, include userId to be explicit, else rely on session
+      const identifierParams = user?.id ? `userId=${user.id}` : '';
 
       try {
         // Pass identifier as query params for DELETE request
         const response = await axios.delete(
-          `${process.env.NEXT_PUBLIC_API_URL}/cart/${cartId}?${identifierParams}`
+          `${process.env.NEXT_PUBLIC_API_URL}/cart/${cartId}${identifierParams ? `?${identifierParams}` : ''}`
         );
         if (response.data.success) {
           // toast.success("Item dihapus."); // Already handled optimistically
@@ -594,12 +530,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
           localStorage.setItem("cart_items", JSON.stringify([]));
           localStorage.setItem("cart_count", "0");
           localStorage.setItem("cart_total", "0");
-          
-          // Jika ada guestId baru, kirim perintah clear ke server
-          if (event.newValue) {
-            axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/cart/clear-guest-cart?guestId=${event.newValue}`)
-              .catch(err => console.error("Failed to clear cart for new guest:", err));
-          }
+
+          // Trigger a fresh fetch; server derives guest from session cookie
+          window.dispatchEvent(new CustomEvent("FORCE_CART_REFRESH"));
         }
       }
     };

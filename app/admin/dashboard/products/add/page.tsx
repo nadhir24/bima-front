@@ -11,7 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { PlusCircle, Trash2 } from "lucide-react";
+import { ArrowLeft, PlusCircle, Trash2 } from "lucide-react";
+import Link from 'next/link';
+ 
+
 import {
   Select,
   SelectContent,
@@ -43,12 +46,25 @@ const AddProductPage = () => {
   const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
 
   // --- size handlers (keadaan tetap sama seperti yang kamu minta) ---
+  const formatNumber = (value: string) => {
+    if (!value) return "";
+    const numberValue = parseInt(value.replace(/\D/g, ''), 10);
+    if (isNaN(numberValue)) return "";
+    return new Intl.NumberFormat('id-ID').format(numberValue);
+  }
+
   const handleSizeChange = (index: number, field: keyof Size, value: string) => {
     const newSizes = [...sizes];
-    if (field === "price") {
-      newSizes[index].price = value.replace(/\D/g, "");
-    } else if (field === "qty") {
-      newSizes[index].qty = value.replace(/\D/g, "");
+    // For numeric fields, store only digits. For others (like custom size name or unit), store as is.
+    if (field === "price" || field === "qty") {
+      newSizes[index][field] = value.replace(/\D/g, "");
+    } else if (field === "sizeValue") {
+      // Only strip non-digits if the unit is not 'custom'
+      if (newSizes[index].sizeUnit !== 'custom') {
+        newSizes[index][field] = value.replace(/\D/g, "");
+      } else {
+        newSizes[index][field] = value; // Allow any text for custom size name
+      }
     } else {
       newSizes[index][field] = value;
     }
@@ -138,74 +154,107 @@ const AddProductPage = () => {
 
   return (
     <div className="container mx-auto py-10">
+      <Link href="/admin/dashboard/products">
+          <Button variant="outline">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Products
+          </Button>
+        </Link>
       <h1 className="text-3xl font-bold mb-6">Add New Product</h1>
+      
       <form onSubmit={handleSubmit}>
         <Card>
           <CardHeader>
             <CardTitle>Product Details</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-6">
-            <div>
+            <div className="flex flex-col gap-2">
               <Label>Name</Label>
               <Input value={name} onChange={e => setName(e.target.value)} required />
             </div>
-            <div>
+            <div className="flex flex-col gap-2">
               <Label>Category</Label>
               <Input value={category} onChange={e => setCategory(e.target.value)} required />
             </div>
-            <div>
+            <div className="flex flex-col gap-2">
               <Label>Description</Label>
               <Textarea value={description} onChange={e => setDescription(e.target.value)} />
             </div>
-
             <div>
-              <Label className="block mb-2">Sizes & Pricing</Label>
-              {sizes.map((s, i) => (
-                <div key={i} className="flex gap-2 mb-2 items-center">
-                  <Input
-                    placeholder="Value"
-                    value={s.sizeValue}
-                    onChange={e => handleSizeChange(i, "sizeValue", e.target.value)}
-                    required
-                  />
-
-                  {/* Correct Select structure for unit */}
-                  <Select value={s.sizeUnit} onValueChange={v => handleSizeChange(i, "sizeUnit", v)}>
-                    <SelectTrigger className="w-[120px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {units.map(u => (
-                        <SelectItem key={u} value={u}>
-                          {u}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <Input
-                    placeholder="Price"
-                    type="number"
-                    value={s.price}
-                    onChange={e => handleSizeChange(i, "price", e.target.value)}
-                    required
-                  />
-                  <Input
-                    placeholder="Qty"
-                    type="number"
-                    value={s.qty}
-                    onChange={e => handleSizeChange(i, "qty", e.target.value)}
-                    required
-                  />
-                  <Button type="button" variant="ghost" onClick={() => removeSize(i)}>
-                    <Trash2 size={16} />
-                  </Button>
-                </div>
-              ))}
-              <Button type="button" variant="outline" onClick={addSize}>
-                <PlusCircle size={16} className="mr-2" /> Add Size
-              </Button>
-            </div>
+  <Label className="block mb-3 text-sm font-medium">Sizes & Pricing</Label>
+  
+  {/* Header labels */}
+  <div className="flex gap-2 mb-2 items-center text-xs text-gray-500">
+    <div className="w-[220px]">Value</div>
+    <div className="w-[100px]">Unit</div>
+    <div className="w-[130px]">Price</div>
+    <div className="w-[200px]">Quantity</div>
+    <div className="w-[100px]"></div>
+  </div>
+  
+  {/* Size rows */}
+  {sizes.map((s, i) => (
+    <div key={i} className="flex gap-2 mb-3 items-center">
+      <Input
+        placeholder="100"
+        type="text"
+        value={s.sizeUnit === 'custom' ? s.sizeValue : formatNumber(s.sizeValue)}
+        onChange={e => handleSizeChange(i, "sizeValue", e.target.value)}
+        required
+        className="w-[220px] h-10"
+      />
+      <Select value={s.sizeUnit} onValueChange={v => handleSizeChange(i, "sizeUnit", v)}>
+        <SelectTrigger className="w-[100px] h-10">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {units.map(u => (
+            <SelectItem key={u} value={u}>
+              {u}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <div className="relative w-[130px]">
+        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+          <span className="text-black text-sm font-medium">Rp</span>
+        </div>
+        <Input
+          placeholder="10.000"
+          type="text"
+          value={formatNumber(s.price)}
+          onChange={e => handleSizeChange(i, "price", e.target.value)}
+          required
+          className="pl-10 h-10"
+        />
+      </div>
+      <Input
+        placeholder="10"
+        type="text"
+        value={formatNumber(s.qty)}
+        onChange={e => handleSizeChange(i, "qty", e.target.value)}
+        required
+        className="w-[200px] h-10"
+      />
+      <Button 
+        type="button" 
+        variant="ghost" 
+        size="icon" 
+        onClick={() => removeSize(i)} 
+        className="h-10  flex-shrink-0"
+        disabled={sizes.length === 1}
+      >
+        <Trash2 size={16} />
+      </Button>
+    </div>
+  ))}
+  
+  {/* Add button with proper spacing */}
+  <div className="mt-4">
+    <Button type="button" variant="outline" onClick={addSize} className="h-10">
+      <PlusCircle size={16} className="mr-2" /> Add Size
+    </Button>
+  </div>
+</div>
 
             {/* === IMAGES SECTION (DIPERBAIKI) === */}
             <div>

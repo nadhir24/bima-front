@@ -62,16 +62,17 @@ const parseSizeString = (
   return { value: sizeStr, unit: "custom" };
 };
 
-// Formats a number string into currency format (e.g., 100000 -> 100.000)
-const formatCurrency = (value: string | number): string => {
-  const numStr = String(value).replace(/\./g, ""); // Remove existing dots
-  if (isNaN(parseFloat(numStr))) return ""; // Return empty if not a valid number
-  return numStr.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+// Formats a number string with thousand separators (e.g., 100000 -> 100.000)
+const formatNumber = (value: string): string => {
+  if (!value) return "";
+  const numberValue = parseInt(value.replace(/\D/g, ''), 10);
+  if (isNaN(numberValue)) return "";
+  return new Intl.NumberFormat('id-ID').format(numberValue);
 };
 
-// Removes formatting from currency string (e.g., "Rp100.000" -> "100000")
+// Removes formatting from currency string (e.g., "100.000" -> "100000")
 const unformatCurrency = (value: string): string => {
-  return String(value).replace(/[^\d]/g, ""); // Remove everything except digits
+  return String(value).replace(/\D/g, ""); // Remove everything except digits
 };
 
 // --- Interfaces ---
@@ -217,16 +218,18 @@ const EditProductPage = () => {
     const newSizes = [...sizes];
     const currentSize = { ...newSizes[index] };
 
-    if (field === "price") {
-      currentSize.price = unformatCurrency(value);
+    // For numeric fields, store only digits. For others (like custom size name or unit), store as is.
+    if (field === "price" || field === "qty") {
+      currentSize[field] = unformatCurrency(value);
     } else if (field === "sizeValue") {
-      if (currentSize.sizeUnit === "custom") {
-        currentSize.sizeValue = value; // Allow any text for custom size
+      // Only strip non-digits if the unit is not 'custom'
+      if (currentSize.sizeUnit !== 'custom') {
+        currentSize.sizeValue = unformatCurrency(value);
       } else {
-      currentSize.sizeValue = value.replace(/[^\d.]/g, "");
+        currentSize.sizeValue = value; // Allow any text for custom size name
       }
-    } else if (field === "qty") {
-      currentSize.qty = value;
+    } else if (field === "sizeUnit") {
+      currentSize.sizeUnit = value;
     }
 
     newSizes[index] = currentSize;
@@ -254,12 +257,51 @@ const EditProductPage = () => {
 
   const removeSizeField = (index: number) => {
     const sizeToRemove = sizes[index];
-    if (sizeToRemove && !sizeToRemove.id) {
-      const newSizes = sizes.filter((_, i) => i !== index);
-      setSizes(newSizes);
-    } else if (sizeToRemove && sizeToRemove.id) {
-      toast.info(
-        "Cannot remove saved size. Backend deletion feature not implemented."
+
+    // If it's a new, unsaved size, just remove it from local state.
+    if (!sizeToRemove.id) {
+      if (sizes.length > 1) {
+        const newSizes = sizes.filter((_, i) => i !== index);
+        setSizes(newSizes);
+        toast.success("Size field removed.");
+      } else {
+        toast.error("At least one size entry is required.");
+      }
+      return;
+    }
+
+    // If it's a saved size, confirm and call the backend to delete.
+    if (sizeToRemove.id) {
+      toast.promise(
+        async () => {
+          const token = localStorage.getItem("token");
+          if (!token) throw new Error("Authentication token not found.");
+
+          const response = await axios.delete(
+            `${process.env.NEXT_PUBLIC_API_URL}/catalog/size/${sizeToRemove.id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          if (response.status !== 200) {
+            throw new Error(response.data.message || "Failed to delete size.");
+          }
+
+          return response.data;
+        },
+        {
+          loading: "Deleting size...",
+          success: () => {
+            // On successful deletion, remove it from the local state
+            const newSizes = sizes.filter((_, i) => i !== index);
+            setSizes(newSizes);
+            return "Size deleted successfully!";
+          },
+          error: (err) => err.message || "An unexpected error occurred.",
+        }
       );
     }
   };
@@ -577,7 +619,7 @@ const EditProductPage = () => {
                         value={
                           sizeItem.sizeUnit === "custom" 
                             ? sizeItem.sizeValue 
-                            : sizeItem.sizeValue || ""
+                            : formatNumber(sizeItem.sizeValue)
                         }
                         onChange={(e) =>
                           handleSizeChange(index, "sizeValue", e.target.value)
@@ -620,15 +662,13 @@ const EditProductPage = () => {
                         Price (IDR)
                       </Label>
                       <div className="flex items-center">
-                        <span className="text-sm text-gray-500 mr-1.5 pl-3 py-2 border border-r-0 rounded-l-md bg-gray-100">
+                        <span className="text-sm text-gray-500 flex items-center px-3 border border-r-0 rounded-l-md bg-gray-100">
                           Rp
                         </span>
                         <Input
                           id={`price-${index}`}
                           type="text"
-                          value={
-                            sizeItem.price ? formatCurrency(sizeItem.price) : ""
-                          }
+                          value={formatNumber(sizeItem.price)}
                           onChange={(e) =>
                             handleSizeChange(index, "price", e.target.value)
                           }
@@ -645,13 +685,12 @@ const EditProductPage = () => {
                       </Label>
                       <Input
                         id={`qty-${index}`}
-                        type="number"
-                        value={sizeItem.qty || ""}
+                        type="text"
+                        value={formatNumber(sizeItem.qty)}
                         onChange={(e) =>
                           handleSizeChange(index, "qty", e.target.value)
                         }
                         required
-                        min="0"
                         className="text-sm"
                       />
                     </div>

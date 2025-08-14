@@ -22,7 +22,6 @@ import Image from "next/image";
 import {
   Pagination,
   PaginationContent,
-  PaginationEllipsis,
   PaginationItem,
   PaginationLink,
   PaginationNext,
@@ -208,7 +207,14 @@ export default function ProductsPage() {
           onClick={() => router.push("/admin/dashboard/products/add")}
           disabled={isLoading}
         >
-          {isLoading ? "Loading..." : "Add Product"}
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Loading...
+            </>
+          ) : (
+            "Add Product"
+          )}
         </Button>
       </div>
 
@@ -221,7 +227,7 @@ export default function ProductsPage() {
               <TableHead>Category</TableHead>
               <TableHead>Starting Price</TableHead>
               <TableHead>Stock</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead className="w-[100px] text-right pr-4">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -246,7 +252,7 @@ export default function ProductsPage() {
                 const isAvailable = product.sizes.some((size) => size.qty > 0);
 
                 return (
-                  <TableRow key={product.id}>
+                  <TableRow key={product.id} className="relative">
                     <TableCell>
                       <div className="relative w-16 h-16">
                         <Image
@@ -273,67 +279,51 @@ export default function ProductsPage() {
                         {isAvailable ? "Available" : "Out of Stock"}
                       </span>
                     </TableCell>
-                    <TableCell>
-                      <DropdownMenu
-                        onOpenChange={(isOpen) => {
-                          if (!isOpen && productToDelete === product.id) {
-                            setProductToDelete(null);
-                          }
-                        }}
-                      >
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setEditingId(product.id);
-                              router.push(
-                                `/admin/dashboard/products/edit/${product.id}`
-                              );
-                            }}
-                            textValue="Edit"
-                          >
-                            <Button
-                              variant="ghost"
-                              className="w-full justify-start"
-                              disabled={editingId === product.id}
-                            >
-                              {editingId === product.id ? (
-                                <>
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  Editing...
-                                </>
-                              ) : (
-                                <>
-                                  <PencilIcon className="mr-2 h-4 w-4" />
-                                  Edit
-                                </>
-                              )}
-                            </Button>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDelete(product.id)}
-                            className="text-red-600 focus:bg-red-100 focus:text-red-700"
-                            disabled={productToDelete === product.id}
-                            textValue="Delete"
-                          >
-                            {productToDelete === product.id ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Deleting...
-                              </>
-                            ) : (
-                              <>
-                                <Trash2Icon className="mr-2 h-4 w-4" />
-                                Delete
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                    <TableCell className="relative text-right pr-4">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingId(product.id);
+                            router.push(
+                              `/admin/dashboard/products/edit/${product.id}`
+                            );
+                          }}
+                          disabled={editingId === product.id}
+                        >
+                          {editingId === product.id ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Editing...
+                            </>
+                          ) : (
+                            <>
+                              <PencilIcon className="mr-2 h-4 w-4" />
+                              Edit
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(product.id)}
+                          disabled={productToDelete === product.id}
+                          className="text-red-600 hover:bg-red-100 hover:text-red-700"
+                        >
+                          {productToDelete === product.id ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Deleting...
+                            </>
+                          ) : (
+                            <>
+                              <Trash2Icon className="mr-2 h-4 w-4" />
+                              Delete
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import {
   RadioGroup,
@@ -82,10 +82,7 @@ const ProductDetailPage = () => {
         }
 
         setProduct(productData);
-        // Set the first size as the default selected size
-        if (productData.sizes && productData.sizes.length > 0) {
-          setSelectedSize(productData.sizes[0]);
-        }
+        // Selected size will be set by a separate effect after de-duplication
         
         // Reset image selection to the main image
         setSelectedImageIndex(0);
@@ -101,10 +98,28 @@ const ProductDetailPage = () => {
     }
   }, [categorySlug, productSlug]);
 
+  // De-duplicate sizes to avoid double rendering (e.g., StrictMode effects or duplicate data)
+  const displaySizes = useMemo(() => {
+    const arr = product?.sizes ?? [];
+    const map = new Map<string, Size>();
+    for (const s of arr) {
+      const key = String(s.id ?? `${s.size}-${s.price}`);
+      if (!map.has(key)) map.set(key, s);
+    }
+    return Array.from(map.values());
+  }, [product?.sizes]);
+
+  // Ensure a default selected size after de-duplication
+  useEffect(() => {
+    if (!selectedSize && displaySizes.length > 0) {
+      setSelectedSize(displaySizes[0]);
+    }
+  }, [displaySizes, selectedSize]);
+
   // Handler for changing the selected size
   const handleSizeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const sizeId = event.target.value;
-    const selected = product?.sizes.find(
+    const selected = displaySizes.find(
       (size) => size.id.toString() === sizeId
     );
     setSelectedSize(selected || null);
@@ -265,7 +280,7 @@ const ProductDetailPage = () => {
                 {product?.description}
               </p>
 
-              {product?.sizes && product.sizes.length > 0 && (
+              {displaySizes.length > 0 && (
                 <div className="mt-4">
                   <h2 className="text-lg font-semibold">Pilih Ukuran:</h2>
                   <RadioGroup
@@ -273,7 +288,7 @@ const ProductDetailPage = () => {
                     value={selectedSize?.id.toString() || ""}
                     onChange={handleSizeChange}
                   >
-                    {product.sizes.map((size) => (
+                    {displaySizes.map((size) => (
                       <Radio
                         key={size.id}
                         value={size.id.toString()}

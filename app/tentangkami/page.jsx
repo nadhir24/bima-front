@@ -15,7 +15,7 @@ export default function AboutPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 px-4 lg:px-12 py-8">
           <div className="flex justify-center">
             <p>
-              Rano Cake, didirikan sejak tahun lalu, telah berkiprah di dunia
+              Rano Cake didirikan sejak 2021, telah berkiprah di dunia
               bisnis kue dengan menawarkan berbagai jenis kue tradisional, kue
               ulang tahun, kue kering lebaran, dan asinan Betawi. Selamat datang
               di toko Rano Cake, tempat Anda dapat menemukan beragam pilihan kue

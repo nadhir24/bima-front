@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle, Download, RefreshCcw } from "lucide-react";
+import { CheckCircle, Download, RefreshCcw, Clock, XCircle } from "lucide-react";
 import Tombol from "@/components/button";
 import { useSearchParams } from "next/navigation";
 import axios from "axios";
@@ -289,14 +289,35 @@ function CheckoutSuksesContent() {
                 <div className="w-8 h-8 rounded-full bg-gray-300"></div>
               </div>
             ) : (
-              <CheckCircle className="h-16 w-16 text-green-500" />
+              (() => {
+                const s = (orderDetail?.status || "").toUpperCase();
+                if (s === "SETTLEMENT") return <CheckCircle className="h-16 w-16 text-green-500" />;
+                if (s === "PENDING") return <Clock className="h-16 w-16 text-yellow-500" />;
+                if (s === "CANCELLED" || s === "EXPIRE" || s === "FAILURE")
+                  return <XCircle className="h-16 w-16 text-red-500" />;
+                return <CheckCircle className="h-16 w-16 text-gray-400" />;
+              })()
             )}
           </div>
-          <CardTitle className="text-2xl font-bold text-green-600">
+          <CardTitle
+            className={`text-2xl font-bold ${(() => {
+              const s = (orderDetail?.status || "").toUpperCase();
+              if (s === "SETTLEMENT") return "text-green-600";
+              if (s === "PENDING") return "text-yellow-600";
+              if (s === "CANCELLED" || s === "EXPIRE" || s === "FAILURE") return "text-red-600";
+              return "text-gray-700";
+            })()}`}
+          >
             {loading ? (
               <Skeleton className="h-8 w-48 mx-auto" />
             ) : (
-              "Pembayaran Berhasil!"
+              (() => {
+                const s = (orderDetail?.status || "").toUpperCase();
+                if (s === "SETTLEMENT") return "Pembayaran Berhasil!";
+                if (s === "PENDING") return "Menunggu Pembayaran";
+                if (s === "CANCELLED" || s === "EXPIRE" || s === "FAILURE") return "Pembayaran Gagal / Kedaluwarsa";
+                return s || "Status Pesanan";
+              })()
             )}
           </CardTitle>
         </CardHeader>
@@ -307,10 +328,33 @@ function CheckoutSuksesContent() {
               <Skeleton className="h-4 w-5/6 mx-auto" />
             </div>
           ) : (
-            <p className="text-gray-600">
-              Terima kasih atas pesanan Anda. Kami telah menerima pembayaran
-              Anda dan sedang memproses pesanan Anda.
-            </p>
+            (() => {
+              const s = (orderDetail?.status || "").toUpperCase();
+              if (s === "SETTLEMENT") {
+                return (
+                  <p className="text-gray-600">
+                    Terima kasih atas pesanan Anda. Kami telah menerima pembayaran Anda dan sedang memproses pesanan Anda.
+                  </p>
+                );
+              }
+              if (s === "PENDING") {
+                return (
+                  <p className="text-gray-600">
+                    Pesanan Anda berhasil dibuat, namun pembayaran masih menunggu. Silakan selesaikan pembayaran menggunakan tautan yang tersedia.
+                  </p>
+                );
+              }
+              if (s === "CANCELLED" || s === "EXPIRE" || s === "FAILURE") {
+                return (
+                  <p className="text-gray-600">
+                    Pembayaran tidak berhasil atau kedaluwarsa. Anda dapat mencoba melakukan pembayaran kembali atau membuat pesanan baru.
+                  </p>
+                );
+              }
+              return (
+                <p className="text-gray-600">Status pesanan: {orderDetail?.status || "UNKNOWN"}</p>
+              );
+            })()
           )}
 
           <div className="bg-gray-100 p-4 rounded-lg">

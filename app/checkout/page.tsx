@@ -83,7 +83,7 @@ interface SavedAddress {
 export default function CheckoutPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const { cartItems: contextCartItems, cartCount, cartTotal, isLoadingCart, fetchCart } = useCart();
+  const { cartItems: contextCartItems, cartCount, cartTotal, isLoadingCart, fetchCart, forceRefreshCart } = useCart();
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     firstName: "",
     lastName: "",
@@ -118,6 +118,12 @@ export default function CheckoutPage() {
   // Gunakan useRef untuk menyimpan status sebelumnya dan mencegah fetch ulang yang tidak perlu
   const fetchedRef = React.useRef(false);
   const hasAddressesRef = React.useRef(false);
+
+  // Mounted flag to avoid hydration mismatch flashes
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Optimasi pengaturan image agar tidak load ulang dan gunakan memori yang cukup
   const imageLoader = ({ src, width }: { src: string, width: number }) => {
@@ -190,10 +196,28 @@ export default function CheckoutPage() {
     }
   }, [contextCartItems, cartTotal, isLoadingCart, selectedShippingMethod, shippingMethods]);
 
-  // Use fetchCart from context instead of local implementation
+  // Ensure freshest cart on mount (bypass caches)
   useEffect(() => {
-    fetchCart();
-  }, [fetchCart]);
+    forceRefreshCart();
+  }, [forceRefreshCart]);
+
+  // Refresh cart when window gains focus or tab becomes visible
+  useEffect(() => {
+    const onFocus = () => {
+      forceRefreshCart();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        forceRefreshCart();
+      }
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [forceRefreshCart]);
 
   const fetchSavedAddresses = useCallback(async (userId: string) => {
     setAddressesLoading(true);
@@ -1147,7 +1171,9 @@ export default function CheckoutPage() {
 
                   {/* Subtotal & Total Section */}
                   <div className="space-y-2 pt-4 border-t">
-                    {checkoutData.items.length === 0 ? (
+                    {isLoadingCart ? (
+                      <div className="text-center text-sm text-gray-500 py-2">Memuat keranjang...</div>
+                    ) : checkoutData.items.length === 0 ? (
                       // Tidak perlu tampilkan skeleton untuk Subtotal & Total jika keranjang kosong
                       (<div className="text-center text-sm text-gray-500 py-2">Tambahkan produk untuk melihat total
                                               </div>)
@@ -1173,7 +1199,15 @@ export default function CheckoutPage() {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  {checkoutData.items.length === 0 ? (
+                  {isLoadingCart ? (
+                    <Button
+                      className="w-full bg-black hover:bg-gray-800 text-white"
+                      size="lg"
+                      disabled
+                    >
+                      <Spinner size="sm" className="mr-2" /> Memuat keranjang...
+                    </Button>
+                  ) : checkoutData.items.length === 0 ? (
                     // If cart is empty, only show Lihat Katalog button
                     (<Button
                       onClick={() => router.push("/katalog")}

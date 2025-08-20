@@ -58,6 +58,17 @@ function CheckoutSuksesContent() {
     );
   };
 
+  // If guest (no token) and there is an order id, go to invoice page for guests
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const token = localStorage.getItem("token");
+    const gid = localStorage.getItem("guestId");
+    const oid = getOrderIdFromParams();
+    if (!token && gid && oid) {
+      window.location.replace("/invoice");
+    }
+  }, [searchParams]);
+
   const fetchOrderDetail = async () => {
     const orderId = getOrderIdFromParams();
     if (!orderId) {
@@ -162,7 +173,16 @@ function CheckoutSuksesContent() {
     setErrorInvoice(false);
 
     try {
+      // Prevent retry for non-settled statuses to avoid backend validation errors
+      if (orderDetail?.status && orderDetail.status.toUpperCase() !== "SETTLEMENT") {
+        toast.error("Hanya dapat membuat invoice untuk transaksi yang sudah SETTLEMENT.");
+        setErrorInvoice(true);
+        setLoading(false);
+        return;
+      }
+
       // Trigger invoice generation manually
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/payment/snap/invoice/generate-manual`,
         {
@@ -170,9 +190,11 @@ function CheckoutSuksesContent() {
           phoneNumber: phoneNumber,
         },
         {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
+          // Send Authorization only if token exists; include credentials to allow guest cookies
+          withCredentials: true,
+          headers: token
+            ? { Authorization: `Bearer ${token}` }
+            : {},
         }
       );
 

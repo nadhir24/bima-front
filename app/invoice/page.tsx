@@ -94,17 +94,27 @@ export default function InvoicePage() {
           setLoading(true);
           try {
             const response = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/payment/invoice/guest-list?guestId=${storedGuestId}`
+              `${process.env.NEXT_PUBLIC_API_URL}/payment/invoice/guest-list?guestId=${storedGuestId}`,
+              {
+                // Include cookies for guest session auth
+                credentials: "include",
+                // Prevent stale caches on CDN/proxy layers
+                cache: "no-store",
+              }
             );
 
             if (!response.ok) {
+              if (response.status === 401 || response.status === 403) {
+                throw new Error("Unauthorized: sesi tamu tidak dikenali. Coba muat ulang.");
+              }
               throw new Error("Failed to fetch invoices");
             }
 
             const result = await response.json();
             setInvoices(result.data || []);
           } catch (error) {
-            toast.error("Gagal mengambil data invoice");
+            const msg = error instanceof Error ? error.message : "Gagal mengambil data invoice";
+            toast.error(msg);
           } finally {
             setLoading(false);
           }

@@ -58,16 +58,7 @@ function CheckoutSuksesContent() {
     );
   };
 
-  // If guest (no token) and there is an order id, go to invoice page for guests
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const token = localStorage.getItem("token");
-    const gid = localStorage.getItem("guestId");
-    const oid = getOrderIdFromParams();
-    if (!token && gid && oid) {
-      window.location.replace("/invoice");
-    }
-  }, [searchParams]);
+  // No redirect: user remains on success page even for guests
 
   const fetchOrderDetail = async () => {
     const orderId = getOrderIdFromParams();

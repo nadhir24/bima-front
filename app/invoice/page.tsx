@@ -93,14 +93,10 @@ export default function InvoicePage() {
         const fetchGuestInvoices = async () => {
           setLoading(true);
           try {
+            // Call our Next.js API proxy to avoid cross-site cookie issues
             const response = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/payment/invoice/guest-list?guestId=${storedGuestId}`,
-              {
-                // Include cookies for guest session auth
-                credentials: "include",
-                // Prevent stale caches on CDN/proxy layers
-                cache: "no-store",
-              }
+              `/api/invoice/guest-list?guestId=${encodeURIComponent(storedGuestId)}`,
+              { cache: "no-store" }
             );
 
             if (!response.ok) {

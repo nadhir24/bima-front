@@ -297,14 +297,17 @@ export default function InvoicePage() {
                       </Button>
                     )}
 
-                    {invoice.status === "PENDING" && invoice.paymentUrl && (
+                    {invoice.status === "PENDING" && (invoice.midtransInvoiceUrl || invoice.paymentUrl) && (
                       <Button
                         variant="default"
                         size="sm"
                         className="bg-green-600 hover:bg-green-700"
-                        onClick={() =>
-                          window.open(invoice.paymentUrl, "_blank")
-                        }
+                        onClick={() => {
+                          const url = invoice.midtransInvoiceUrl || invoice.paymentUrl;
+                          if (url) {
+                            window.location.href = url; // redirect same tab to avoid popup blockers/blank tab
+                          }
+                        }}
                       >
                         Bayar Sekarang
                       </Button>

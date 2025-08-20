@@ -594,6 +594,20 @@ export default function CheckoutPage() {
       if (!response.ok) throw new Error("Failed to create transaction");
       const data = await response.json();
       if (data.success && data.data.paymentLink) {
+        try {
+          const usedGuestId = userId ? null : localStorage.getItem("guestId");
+          const orderId = data?.data?.invoice?.midtransOrderId;
+          if (orderId) {
+            localStorage.setItem(
+              "invoiceData",
+              JSON.stringify({
+                orderId,
+                guestId: usedGuestId,
+                createdAt: new Date().toISOString(),
+              })
+            );
+          }
+        } catch {}
         window.location.href = data.data.paymentLink;
       }
     } catch (error) {

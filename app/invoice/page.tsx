@@ -85,8 +85,45 @@ export default function InvoicePage() {
         const storedGuestId = localStorage.getItem("guestId");
         setGuestId(storedGuestId);
 
+        // Fallback: if no guestId, try to show last invoice using orderId kept at checkout
         if (!storedGuestId) {
-          setLoading(false);
+          const doFallback = async () => {
+            try {
+              const invoiceDataRaw = localStorage.getItem("invoiceData");
+              if (invoiceDataRaw) {
+                const { orderId } = JSON.parse(invoiceDataRaw || "{}");
+                if (orderId) {
+                  setLoading(true);
+                  const r = await fetch(`/api/invoice/order-detail?orderId=${encodeURIComponent(orderId)}`, { cache: "no-store" });
+                  if (r.ok) {
+                    const json = await r.json();
+                    const inv = json?.data;
+                    if (inv) {
+                      setInvoices([
+                        {
+                          id: inv.id,
+                          midtransOrderId: inv.midtransOrderId,
+                          status: inv.status,
+                          amount: inv.amount,
+                          createdAt: inv.createdAt,
+                          updatedAt: inv.updatedAt,
+                          midtransInvoicePdfUrl: inv.midtransInvoicePdfUrl,
+                          midtransInvoiceUrl: inv.midtransInvoiceUrl,
+                          paymentUrl: inv.paymentUrl,
+                        },
+                      ]);
+                      setLoading(false);
+                      return;
+                    }
+                  }
+                }
+              }
+            } catch {
+              // ignore and show empty state
+            }
+            setLoading(false);
+          };
+          doFallback();
           return;
         }
 

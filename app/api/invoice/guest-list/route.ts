@@ -18,23 +18,20 @@ export async function GET(req: NextRequest) {
 
     const url = `${api}/payment/invoice/guest-list?guestId=${encodeURIComponent(guestId)}&page=${encodeURIComponent(page)}&limit=${encodeURIComponent(limit)}`;
 
-    // Forward the caller's cookies so the backend can validate the same guest session
-    const cookie = req.headers.get("cookie") || "";
+    // Do NOT forward cookies to avoid backend auth on this public endpoint
     const userAgent = req.headers.get("user-agent") || undefined;
     const referer = req.headers.get("referer") || undefined;
 
     const res = await fetch(url, {
       method: "GET",
       cache: "no-store",
-      // Important: forward cookies so Rails/Nest session middleware can match guestId
       headers: {
         Accept: "application/json",
-        ...(cookie ? { Cookie: cookie } : {}),
         ...(userAgent ? { "User-Agent": userAgent } : {}),
         ...(referer ? { Referer: referer } : {}),
       },
-      // Ensure the fetch library keeps cookies attached in node runtime (harmless if none)
-      credentials: "include",
+      // No credentials to avoid sending any cookies implicitly
+      credentials: "omit",
     });
 
     const data = await res.json().catch(() => ({}));

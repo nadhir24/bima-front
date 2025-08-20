@@ -16,13 +16,7 @@ import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectItem } from "@heroui/select";
 import {
   Pagination,
   PaginationContent,
@@ -32,13 +26,6 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { MoreHorizontal } from "lucide-react";
 import React from "react";
 
 // Define possible fulfillment statuses
@@ -348,31 +335,38 @@ export default function OrdersPage() {
               />
             </div>
 
-            <div className="w-full md:w-[180px]">
+            <div className="w-full md:w-[240px]">
               <label
                 htmlFor="statusFilter"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
                 Status
               </label>
-              <Select
-                value={statusFilter}
-                onValueChange={(value) => {
-                  setStatusFilter(value as FulfillmentStatus | "all");
-                }}
-              >
-                <SelectTrigger id="statusFilter">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  {Object.values(FULFILLMENT_STATUSES).map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {status}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {(() => {
+                const STATUS_OPTIONS = [
+                  { key: "all", label: "All Status" },
+                  ...Object.values(FULFILLMENT_STATUSES).map((s) => ({ key: s, label: s })),
+                ];
+                const selected = new Set<string>([statusFilter]);
+                return (
+                  <Select
+                    aria-label="Filter by status"
+                    id="statusFilter"
+                    selectedKeys={selected}
+                    onSelectionChange={(keys) => {
+                      const first = Array.from(keys as Set<string>)[0];
+                      setStatusFilter((first as FulfillmentStatus | "all") || "all");
+                    }}
+                    className="max-w-full"
+                    items={STATUS_OPTIONS}
+                    selectionMode="single"
+                  >
+                    {(item: { key: string; label: string }) => (
+                      <SelectItem key={item.key}>{item.label}</SelectItem>
+                    )}
+                  </Select>
+                );
+              })()}
             </div>
 
             <div className="w-full md:w-[180px]">
@@ -523,7 +517,7 @@ export default function OrdersPage() {
                                 size="sm"
                                 onClick={() =>
                                   window.open(
-                                    order.midtransInvoicePdfUrl,
+                                    order.midtransInvoicePdfUrl!,
                                     "_blank"
                                   )
                                 }
@@ -531,78 +525,65 @@ export default function OrdersPage() {
                                 PDF
                               </Button>
                             )}
+
+                          {order.status === "PENDING" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  const resp = await fetch(
+                                    `${process.env.NEXT_PUBLIC_API_URL}/payment/snap/invoice/generate/${encodeURIComponent(
+                                      order.midtransOrderId
+                                    )}`,
+                                    { method: "POST" }
+                                  );
+                                  const data = await resp.json().catch(() => ({}));
+                                  if (!resp.ok || data?.success === false) {
+                                    throw new Error(data?.message || "Failed to generate PDF");
+                                  }
+                                  toast.success("PDF generated", { description: "Invoice updated" });
+                                  await fetchOrders();
+                                } catch (e: any) {
+                                  toast.error("Error", { description: e?.message || "Failed to generate PDF" });
+                                }
+                              }}
+                              disabled={updateLoading === order.id}
+                            >
+                              Generate
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() =>
-                                updateOrderStatus(
-                                  order.id,
-                                  FULFILLMENT_STATUSES.PROCESSING
-                                )
-                              }
-                              disabled={
-                                order.status ===
-                                  FULFILLMENT_STATUSES.PROCESSING ||
-                                updateLoading === order.id
-                              }
+                        {(() => {
+                          const ACTIONS: { key: FulfillmentStatus; label: string }[] = [
+                            { key: FULFILLMENT_STATUSES.PROCESSING, label: "Processing" },
+                            { key: FULFILLMENT_STATUSES.SHIPPED, label: "Shipped" },
+                            { key: FULFILLMENT_STATUSES.DELIVERED, label: "Delivered" },
+                            { key: FULFILLMENT_STATUSES.CANCELLED, label: "Cancelled" },
+                          ];
+                          return (
+                            <Select
+                              aria-label="Update status"
+                              selectedKeys={new Set<string>([order.status])}
+                              onSelectionChange={(keys) => {
+                                const first = Array.from(keys as Set<string>)[0] as FulfillmentStatus;
+                                if (first && first !== order.status) {
+                                  updateOrderStatus(order.id, first);
+                                }
+                              }}
+                              className="w-[160px]"
+                              items={ACTIONS}
+                              isDisabled={updateLoading === order.id}
+                              selectionMode="single"
                             >
-                              Set as Processing
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                updateOrderStatus(
-                                  order.id,
-                                  FULFILLMENT_STATUSES.SHIPPED
-                                )
-                              }
-                              disabled={
-                                order.status === FULFILLMENT_STATUSES.SHIPPED ||
-                                updateLoading === order.id
-                              }
-                            >
-                              Set as Shipped
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                updateOrderStatus(
-                                  order.id,
-                                  FULFILLMENT_STATUSES.DELIVERED
-                                )
-                              }
-                              disabled={
-                                order.status ===
-                                  FULFILLMENT_STATUSES.DELIVERED ||
-                                updateLoading === order.id
-                              }
-                            >
-                              Set as Delivered
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                updateOrderStatus(
-                                  order.id,
-                                  FULFILLMENT_STATUSES.CANCELLED
-                                )
-                              }
-                              disabled={
-                                order.status ===
-                                  FULFILLMENT_STATUSES.CANCELLED ||
-                                updateLoading === order.id
-                              }
-                              className="text-red-600"
-                            >
-                              Cancel Order
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                              {(item: { key: FulfillmentStatus; label: string }) => (
+                                <SelectItem key={item.key}>{item.label}</SelectItem>
+                              )}
+                            </Select>
+                          );
+                        })()}
                       </TableCell>
                     </TableRow>
                   ))}

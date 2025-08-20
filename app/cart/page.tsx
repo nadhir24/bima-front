@@ -22,6 +22,7 @@ const CartPage = () => {
     cartTotal,
     isLoadingCart,
     fetchCart,
+    forceRefreshCart,
     updateCartItem,
     removeFromCart,
   } = useCart();
@@ -36,10 +37,22 @@ const CartPage = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [itemToDelete, setItemToDelete] = useState<CartItem | null>(null);
 
+  // Prevent hydration mismatch by delaying render until mounted
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Initialize local state from context
   useEffect(() => {
     setDisplayCartItems(contextCartItems);
   }, [contextCartItems]);
+
+  // Ensure we fetch the latest cart on page mount
+  useEffect(() => {
+    // Use force refresh to bypass throttle/caching on initial open
+    forceRefreshCart?.() || fetchCart();
+  }, [fetchCart, forceRefreshCart]);
 
   // Fungsi utilitas untuk menampilkan pesan error (lebih sederhana)
   const showErrorMessage = (message: string) => {
@@ -144,6 +157,7 @@ const CartPage = () => {
   };
 
   // Loading skeleton
+  if (!mounted) return null;
   if (isLoadingCart && displayCartItems.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">

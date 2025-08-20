@@ -98,14 +98,35 @@ const ProductDetailPage = () => {
     }
   }, [categorySlug, productSlug]);
 
-  // De-duplicate sizes to avoid double rendering (e.g., StrictMode effects or duplicate data)
+  // De-duplicate sizes by normalized label + price, merge quantities for duplicates
   const displaySizes = useMemo(() => {
     const arr = product?.sizes ?? [];
     const map = new Map<string, Size>();
+
+    const toNumber = (val: any) => {
+      const n = Number(String(val ?? '').replace(/[^0-9.]/g, ''));
+      return Number.isFinite(n) ? n : NaN;
+    };
+
     for (const s of arr) {
-      const key = String(s.id ?? `${s.size}-${s.price}`);
-      if (!map.has(key)) map.set(key, s);
+      const sizeLabel = String(s.size ?? '').trim().toLowerCase();
+      const priceNum = toNumber(s.price);
+      const priceKey = Number.isNaN(priceNum) ? String(s.price ?? '').trim() : String(priceNum);
+      const key = `${sizeLabel}|${priceKey}`;
+
+      if (!map.has(key)) {
+        // clone to avoid mutating original
+        map.set(key, { ...s });
+      } else {
+        // merge qty so stock reflects combined duplicates; keep the first id
+        const existing = map.get(key)!;
+        const existingQty = toNumber(existing.qty);
+        const addQty = toNumber(s.qty);
+        const mergedQty = (Number.isFinite(existingQty) ? existingQty : 0) + (Number.isFinite(addQty) ? addQty : 0);
+        map.set(key, { ...existing, qty: mergedQty });
+      }
     }
+
     return Array.from(map.values());
   }, [product?.sizes]);
 

@@ -46,6 +46,77 @@ function CheckoutSuksesContent() {
   const searchParams = useSearchParams();
   const [orderDetail, setOrderDetail] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+
+  const getOrderIdFromParams = () => {
+    // Support multiple possible keys from finish URL
+    return (
+      searchParams.get("order_id") ||
+      searchParams.get("orderId") ||
+      searchParams.get("midtransOrderId") ||
+      ""
+    );
+  };
+
+  const fetchOrderDetail = async () => {
+    const orderId = getOrderIdFromParams();
+    if (!orderId) {
+      toast.error("Order ID tidak ditemukan di URL");
+      setLoading(false);
+      return;
+    }
+    try {
+      setRefreshing(true);
+      // Generate/fetch invoice detail to ensure urls are filled
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/payment/snap/invoice/generate/${encodeURIComponent(
+        orderId
+      )}`;
+      const { data } = await axios.post(url, {}, { withCredentials: true });
+      if (data?.success && data?.data) {
+        setOrderDetail(data.data as OrderDetail);
+      } else if (data?.data) {
+        setOrderDetail(data.data as OrderDetail);
+      } else {
+        toast.error("Gagal mengambil detail pesanan");
+      }
+    } catch (err: any) {
+      toast.error("Gagal memuat detail order", {
+        description: err?.response?.data?.message || err?.message,
+      });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrderDetail();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const statusBadge = (status?: string) => {
+    const s = (status || "").toUpperCase();
+    switch (s) {
+      case "SETTLEMENT":
+        return (
+          <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">Berhasil</span>
+        );
+      case "PENDING":
+        return (
+          <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Menunggu Pembayaran</span>
+        );
+      case "CANCELLED":
+      case "EXPIRE":
+      case "FAILURE":
+        return (
+          <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">Gagal / Kedaluwarsa</span>
+        );
+      default:
+        return (
+          <span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">{s || "UNKNOWN"}</span>
+        );
+    }
+  };
   const [errorInvoice, setErrorInvoice] = useState<boolean>(false);
   const [retryCount, setRetryCount] = useState(0);
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -147,27 +218,7 @@ function CheckoutSuksesContent() {
       localStorage.removeItem("guestInvoiceId");
     }
 
-    const fetchOrderDetail = async () => {
-      try {
-        const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/payment/snap/order-detail?orderId=${orderId}`
-        );
-
-        if (response.data.success) {
-          const data = response.data.data;
-          setOrderDetail(data);
-          setLoading(false);
-
-          if (data.status === "SETTLEMENT" && !data.midtransInvoicePdfUrl) {
-            setErrorInvoice(true);
-            toast.error("Invoice belum tersedia. Silakan coba generate ulang.");
-          }
-        }
-      } catch (err) {
-        setLoading(false);
-      }
-    };
-
+    // Use the top-level fetch which also ensures invoice generation when needed
     fetchOrderDetail();
 
     const interval = setInterval(async () => {

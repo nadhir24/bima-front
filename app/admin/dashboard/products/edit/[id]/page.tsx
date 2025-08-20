@@ -136,6 +136,29 @@ const EditProductPage = () => {
 
   const availableUnits = ["gram", "kg", "pcs", "ml", "liter", "cm", "meter", "custom"];
 
+  // --- Dedupe helper: merge duplicates by normalized label (value+unit) and numeric price ---
+  const dedupeSizes = (list: Size[]): Size[] => {
+    const map = new Map<string, Size>();
+    const num = (v: any) => {
+      const n = Number(String(v ?? '').replace(/[^0-9.]/g, ''));
+      return Number.isFinite(n) ? n : 0;
+    };
+    for (const s of list) {
+      const label = s.sizeUnit === 'custom'
+        ? String(s.sizeValue ?? '').trim().toLowerCase()
+        : `${String(s.sizeValue ?? '').trim()} ${String(s.sizeUnit ?? '').trim().toLowerCase()}`;
+      const key = `${label}|${num(s.price)}`;
+      if (!map.has(key)) {
+        map.set(key, { ...s });
+      } else {
+        const ex = map.get(key)!;
+        const mergedQty = num(ex.qty) + num(s.qty);
+        map.set(key, { ...ex, qty: String(mergedQty) });
+      }
+    }
+    return Array.from(map.values());
+  };
+
   useEffect(() => {
     if (!id) {
       setIsLoading(false);
@@ -154,17 +177,19 @@ const EditProductPage = () => {
 
         // Parse backend sizes into frontend format
         setSizes(
-          backendSizes?.map((s) => {
-            const parsedSize = parseSizeString(s.size);
-            const price = unformatCurrency(s.price);
-            return {
-              id: s.id,
-              sizeValue: parsedSize.value,
-              sizeUnit: parsedSize.unit,
-              price: price,
-              qty: String(s.qty),
-            };
-          }) || [{ sizeValue: "", sizeUnit: "gram", price: "", qty: "" }]
+          dedupeSizes(
+            backendSizes?.map((s) => {
+              const parsedSize = parseSizeString(s.size);
+              const price = unformatCurrency(s.price);
+              return {
+                id: s.id,
+                sizeValue: parsedSize.value,
+                sizeUnit: parsedSize.unit,
+                price: price,
+                qty: String(s.qty),
+              };
+            }) || [{ sizeValue: "", sizeUnit: "gram", price: "", qty: "" }]
+          )
         );
 
         // Handle existing images
@@ -389,12 +414,14 @@ const EditProductPage = () => {
 
     // --- Start Validation ---
     let validationError: string | null = null;
-    const sizesToSend = [];
+    // Dedupe right before submit to avoid sending duplicates
+    const uniqueSizes = dedupeSizes(sizes);
+    const sizesToSend: Array<{ id?: number; size: string; price: string; qty: string }> = [];
     
     console.log("Submitting sizes - total count: ", sizes.length);
 
-    for (let i = 0; i < sizes.length; i++) {
-      const s = sizes[i];
+    for (let i = 0; i < uniqueSizes.length; i++) {
+      const s = uniqueSizes[i];
       console.log(`Processing size #${i+1}:`, s);
       const priceNum = parseFloat(s.price);
       const qtyNum = parseInt(s.qty, 10);

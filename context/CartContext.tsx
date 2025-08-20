@@ -14,6 +14,9 @@ import { useAuth } from "./AuthContext"; // Import useAuth
 import { toast, Toaster } from "sonner"; // Atau react-toastify
 
 // Definisikan tipe CartItem seperti di HoverCartModal atau lebih lengkap
+// Ensure cross-site cookies (guest session) are sent on all requests
+axios.defaults.withCredentials = true;
+
 export interface CartItem {
   id: number;
   userId: number | null;
@@ -120,15 +123,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     try {
       // Add timestamp to prevent caching
+      const qs = currentIdentifier ? `${currentIdentifier}&` : "";
+      const q = `_t=${now}`;
+      const prefix = qs ? `?${qs}${q}` : `?${q}`;
       const [itemsRes, countRes, totalRes] = await Promise.all([
         axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?${currentIdentifier}&_t=${now}`
+          `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany${prefix}`
         ),
         axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/cart/count?${currentIdentifier}&_t=${now}`
+          `${process.env.NEXT_PUBLIC_API_URL}/cart/count${prefix}`
         ),
         axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/cart/total?${currentIdentifier}&_t=${now}`
+          `${process.env.NEXT_PUBLIC_API_URL}/cart/total${prefix}`
         ),
       ]);
 
@@ -206,47 +212,40 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const storedGuestId = localStorage.getItem("guestId");
 
-    // Logged-in: AuthContext handles sync; just clear any guest marker and refresh
     if (isLoggedIn) {
+      // Logged-in: drop any guest marker and fetch user cart
       if (storedGuestId) localStorage.removeItem("guestId");
       setGuestId(null);
       fetchCartImpl();
-    } else {
-      // Guest flow: always initialize/refresh server-side guest session
-      const initGuest = async () => {
-        try {
+      setHasInitialized(true);
+      return;
+    }
+
+    // Guest flow: only create a guest session if we don't already have one
+    const initGuest = async () => {
+      try {
+        if (!storedGuestId) {
           const response = await axios.get(
             `${process.env.NEXT_PUBLIC_API_URL}/cart/guest-session`,
             { withCredentials: true }
           );
           const newGuestId = response.data?.guestId;
-
-          // Hard reset local cache
-          localStorage.setItem("cart_items", JSON.stringify([]));
-          localStorage.setItem("cart_count", "0");
-          localStorage.setItem("cart_total", "0");
-
           if (newGuestId) {
             localStorage.setItem("guestId", newGuestId);
             setGuestId(newGuestId);
-          } else {
-            localStorage.removeItem("guestId");
-            setGuestId(null);
           }
-
-          // Reset state and fetch fresh from server
-          setCartItems([]);
-          setCartCount(0);
-          setCartTotal(0);
-          await fetchCartImpl();
-        } catch (err) {
-          // Silent fail
+        } else {
+          setGuestId(storedGuestId);
         }
-      };
-      initGuest();
-    }
-
-    setHasInitialized(true);
+        // Do not clear local storage or state; just fetch current server cart
+        await fetchCartImpl();
+      } catch (err) {
+        // Silent fail
+      } finally {
+        setHasInitialized(true);
+      }
+    };
+    initGuest();
   }, [isLoggedIn, user?.id, fetchCartImpl]);
 
   // Separate effect to listen for create_guest_session events
@@ -303,13 +302,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Fetch cart when dependencies change
   useEffect(() => {
-    if (hasInitialized && currentIdentifier) {
+    if (hasInitialized) {
+      // Always fetch; backend derives guest from session cookie when no userId
       fetchCartImpl();
-    } else if (hasInitialized) {
-      setCartItems([]);
-      setCartCount(0);
-      setCartTotal(0);
-      setIsLoadingCart(false);
     }
   }, [hasInitialized, currentIdentifier, fetchCartImpl]);
 
@@ -456,23 +451,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Force refresh cart from server, ignoring cache
   const forceRefreshCart = useCallback(async () => {
-    if (!currentIdentifier) return;
-    
     try {
       // Force timestamp to bypass any caching
       const timestamp = new Date().getTime();
+      const qs = currentIdentifier ? `${currentIdentifier}&` : "";
+      const q = `_t=${timestamp}&force=true`;
+      const prefix = qs ? `?${qs}${q}` : `?${q}`;
+      const headers = { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' } as const;
       const [itemsRes, countRes, totalRes] = await Promise.all([
         axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany?${currentIdentifier}&_t=${timestamp}&force=true`,
-          { headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' } }
+          `${process.env.NEXT_PUBLIC_API_URL}/cart/findMany${prefix}`,
+          { headers }
         ),
         axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/cart/count?${currentIdentifier}&_t=${timestamp}&force=true`,
-          { headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' } }
+          `${process.env.NEXT_PUBLIC_API_URL}/cart/count${prefix}`,
+          { headers }
         ),
         axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/cart/total?${currentIdentifier}&_t=${timestamp}&force=true`,
-          { headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' } }
+          `${process.env.NEXT_PUBLIC_API_URL}/cart/total${prefix}`,
+          { headers }
         ),
       ]);
 

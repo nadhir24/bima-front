@@ -208,9 +208,9 @@ const ProductDetailPage = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Breadcrumbs Navigation */}
       <nav className="flex mb-4">
-        <ol className="flex items-center space-x-2 text-gray-600">
+        <ol className="flex items-center space-x-2 text-foreground">
           <li>
-            <a href="/" className="hover:text-blue-600">Home</a>
+            <a href="/" className="hover:text-primary">Home</a>
           </li>
           <li>/</li>
           <li>
@@ -220,24 +220,24 @@ const ProductDetailPage = () => {
                 e.preventDefault();
                 navigateToCategory(categorySlug);
               }}
-              className="hover:text-blue-600 capitalize"
+              className="hover:text-primary capitalize"
             >
               {categorySlug?.replace(/-/g, " ")}
             </a>
           </li>
           <li>/</li>
-          <li className="font-semibold text-gray-800 capitalize">
+          <li className="font-semibold text-foreground capitalize">
             {product?.name}
           </li>
         </ol>
       </nav>
 
-      <div className="flex flex-col lg:flex-row lg:space-x-12 bg-white rounded-lg shadow-sm p-6">
+      <div className="flex flex-col lg:flex-row lg:space-x-12 bg-card text-foreground rounded-lg shadow-sm p-6">
         {/* Image Section */}
         <div className="lg:w-1/2 w-full">
           <div className="relative aspect-square w-full max-w-[500px] mx-auto mb-3">
             {isLoading ? (
-              <div className="w-full h-full rounded-xl bg-gray-200 animate-pulse"></div>
+              <div className="w-full h-full rounded-xl bg-muted animate-pulse"></div>
             ) : (
               getCurrentImageUrl() && (
                 <Image
@@ -285,19 +285,19 @@ const ProductDetailPage = () => {
         <div className="lg:w-1/2 w-full mt-6 lg:mt-0">
           {isLoading ? (
             <div className="space-y-4">
-              <div className="h-8 bg-gray-200 rounded-md w-3/4 animate-pulse" />
-              <div className="h-20 bg-gray-200 rounded-md animate-pulse" />
+              <div className="h-8 bg-muted rounded-md w-3/4 animate-pulse" />
+              <div className="h-20 bg-muted rounded-md animate-pulse" />
               <div className="space-y-2">
-                <div className="h-6 bg-gray-200 rounded-md w-1/4 animate-pulse" />
+                <div className="h-6 bg-muted rounded-md w-1/4 animate-pulse" />
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-12 bg-gray-200 rounded-md animate-pulse" />
+                  <div key={i} className="h-12 bg-muted rounded-md animate-pulse" />
                 ))}
               </div>
             </div>
           ) : (
             <>
               <h1 className="text-2xl font-bold capitalize">{product?.name}</h1>
-              <p className="text-gray-600 mt-2 text-justify">
+              <p className="text-muted-foreground mt-2 text-justify">
                 {product?.description}
               </p>
 
@@ -313,7 +313,7 @@ const ProductDetailPage = () => {
                       <Radio
                         key={size.id}
                         value={size.id.toString()}
-                        className="mb-1 p-3 border rounded-md flex justify-between items-center hover:bg-gray-50 transition-colors"
+                        className="mb-1 p-3 border rounded-md flex justify-between items-center hover:bg-muted transition-colors"
                       >
                         <span className="font-medium text-sm capitalize">
                           {size.size}
@@ -338,7 +338,7 @@ const ProductDetailPage = () => {
               >
                 {isAddingToCart ? "Menambahkan..." : "Add to Cart"}
               </Button>
-              <p className="text-sm text-gray-400 mt-2">
+              <p className="text-sm text-muted-foreground mt-2">
                 *Penambahan quantity ada di halaman keranjang.
               </p>
             </>

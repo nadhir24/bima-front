@@ -221,6 +221,11 @@ export default function Modall() {
         }
       );
 
+      // Mark that the user has just registered so login flow can merge guest cart
+      try {
+        localStorage.setItem("JUST_REGISTERED", "1");
+      } catch {}
+
       closeRegister();
       openLogin();
       setFullName("");

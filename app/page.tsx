@@ -72,9 +72,9 @@ export default function Home() {
   };
 
   const stats = [
-    { value: 260, label: "Kue Terjual" },
-    { value: 20, label: "Pelanggan Puas" },
-    { value: 2, label: "Tahun Pengalaman" },
+    { value: 1000+'+', label: "Kue Terjual" },
+    { value: 200+'+', label: "Pelanggan Puas" },
+    { value: 4, label: "Tahun Pengalaman" },
   ];
 
   // Static product data
